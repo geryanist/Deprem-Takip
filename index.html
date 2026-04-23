@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Deprem Takip Türkiye</title>
+  <meta name="theme-color" content="#07111f" />
+  <style>
+    :root {
+      --bg: #06101c;
+      --bg-2: #0a1627;
+      --panel: rgba(255,255,255,.05);
+      --panel-2: rgba(255,255,255,.075);
+      --line: rgba(255,255,255,.08);
+      --line-soft: rgba(255,255,255,.04);
+      --text: #f8fafc;
+      --muted: #93a4b8;
+      --danger: #ef4444;
+      --danger-2: #dc2626;
+      --warn: #f97316;
+      --ok: #10b981;
+      --chip: rgba(255,255,255,.06);
+      --shadow: 0 20px 60px rgba(0,0,0,.35);
+      --radius-xl: 28px;
+      --radius-lg: 22px;
+      --radius-md: 18px;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; background: radial-gradient(circle at top, #10203a 0%, var(--bg) 40%, #040b14 100%); color: var(--text); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { min-height: 100vh; }
+    button, input, select { font: inherit; }
+
+    .app {
+      max-width: 440px;
+      margin: 0 auto;
+      min-height: 100vh;
+      position: relative;
+      padding-bottom: 110px;
+    }
+
+    .splash {
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(circle at 50% 25%, rgba(239,68,68,.18), transparent 28%),
+        radial-gradient(circle at 50% 80%, rgba(255,255,255,.06), transparent 28%),
+        linear-gradient(180deg, #0b1422 0%, #050b13 100%);
+      transition: opacity .45s ease, visibility .45s ease;
+    }
+    .splash.hide { opacity: 0; visibility: hidden; }
+    .splash-card {
+      width: min(88vw, 360px);
+      border-radius: 34px;
+      padding: 30px 22px;
+      border: 1px solid rgba(255,255,255,.09);
+      background: rgba(255,255,255,.04);
+      backdrop-filter: blur(18px);
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+    .pulse-icon {
+      width: 88px;
+      height: 88px;
+      margin: 0 auto 18px;
+      border-radius: 28px;
+      background: linear-gradient(145deg, rgba(239,68,68,.2), rgba(239,68,68,.08));
+      border: 1px solid rgba(239,68,68,.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 0 12px rgba(239,68,68,.05), 0 0 60px rgba(239,68,68,.18);
+      position: relative;
+      overflow: hidden;
+    }
+    .pulse-icon svg { width: 46px; height: 46px; }
+    .splash h1 { margin: 0; font-size: 28px; letter-spacing: -.03em; }
+    .splash p { margin: 10px 0 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+    .loader {
+      width: 78px; height: 4px; border-radius: 999px; background: rgba(255,255,255,.08); margin: 20px auto 0; overflow: hidden;
+    }
+    .loader > span {
+      display: block; height: 100%; width: 45%; border-radius: inherit; background: linear-gradient(90deg, #fb7185, #ef4444); animation: slide 1.15s infinite ease-in-out;
+    }
+    @keyframes slide { 0% { transform: translateX(-120%); } 100% { transform: translateX(220%); } }
+
+    .top {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(18px);
+      background: linear-gradient(180deg, rgba(6,16,28,.92), rgba(6,16,28,.78));
+      border-bottom: 1px solid var(--line-soft);
+      padding: 20px 18px 14px;
+    }
+    .eyebrow {
+      font-size: 11px;
+      letter-spacing: .28em;
+      text-transform: uppercase;
+      color: #fda4af;
+      opacity: .92;
+    }
+    .top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 10px;
+    }
+    .top h2 {
+      font-size: 28px;
+      line-height: 1.05;
+      margin: 0;
+      letter-spacing: -.04em;
+    }
+    .status {
+      border-radius: 18px;
+      padding: 10px 12px;
+      min-width: 104px;
+      text-align: right;
+      border: 1px solid rgba(239,68,68,.2);
+      background: rgba(239,68,68,.09);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+    }
+    .status .label { font-size: 10px; text-transform: uppercase; letter-spacing: .18em; color: #fecaca; }
+    .status .value { margin-top: 2px; font-weight: 700; font-size: 13px; }
+
+    .page {
+      padding: 16px 16px 0;
+    }
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.035));
+      border: 1px solid var(--line);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow);
+    }
+    .hero {
+      padding: 16px;
+      overflow: hidden;
+      position: relative;
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      width: 200px;
+      height: 200px;
+      right: -80px;
+      top: -70px;
+      background: radial-gradient(circle, rgba(239,68,68,.2), transparent 65%);
+      pointer-events: none;
+    }
+    .hero-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .muted { color: var(--muted); }
+    .hero .location {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -.03em;
+      margin-top: 4px;
+    }
+    .hero .sub { margin-top: 6px; font-size: 14px; color: #c8d5e2; }
+    .magnitude-big {
+      min-width: 92px;
+      text-align: center;
+      padding: 16px 10px;
+      border-radius: 24px;
+      background: linear-gradient(180deg, rgba(239,68,68,.18), rgba(220,38,38,.22));
+      border: 1px solid rgba(239,68,68,.22);
+    }
+    .magnitude-big strong { display: block; font-size: 30px; line-height: 1; letter-spacing: -.05em; }
+    .magnitude-big span { display: block; font-size: 11px; margin-top: 6px; color: #fecaca; letter-spacing: .12em; text-transform: uppercase; }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .hero-item {
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.05);
+      border-radius: 18px;
+      padding: 12px 10px;
+      text-align: center;
+    }
+    .hero-item .k { font-size: 11px; color: var(--muted); }
+    .hero-item .v { margin-top: 4px; font-size: 14px; font-weight: 700; }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 20px 2px 12px;
+    }
+    .section-head h3 { margin: 0; font-size: 16px; letter-spacing: -.02em; }
+    .section-head .right { color: var(--muted); font-size: 13px; }
+
+    .chips {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: none;
+    }
+    .chips::-webkit-scrollbar { display: none; }
+    .chip {
+      border: 1px solid var(--line);
+      background: var(--chip);
+      padding: 10px 14px;
+      border-radius: 999px;
+      white-space: nowrap;
+      color: #dce6ef;
+      font-size: 13px;
+      cursor: pointer;
+      transition: .2s ease;
+    }
+    .chip.active {
+      background: rgba(239,68,68,.14);
+      border-color: rgba(239,68,68,.25);
+      color: #fff;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+    }
+
+    .search-wrap {
+      margin-top: 12px;
+      display: flex;
+      gap: 10px;
+    }
+    .search {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-radius: 18px;
+      padding: 0 14px;
+      height: 50px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid var(--line);
+    }
+    .search input {
+      width: 100%;
+      background: transparent;
+      border: 0;
+      color: white;
+      outline: none;
+      font-size: 14px;
+    }
+    .ghost-btn {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.05);
+      width: 50px; height: 50px;
+      border-radius: 18px;
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .quake-list { display: flex; flex-direction: column; gap: 12px; }
+    .quake-card {
+      border-radius: 26px;
+      padding: 14px;
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.04));
+      border: 1px solid var(--line);
+      cursor: pointer;
+      transition: transform .15s ease, border-color .15s ease;
+    }
+    .quake-card:active { transform: scale(.99); }
+    .quake-top {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .mag {
+      min-width: 68px;
+      padding: 14px 8px;
+      border-radius: 22px;
+      text-align: center;
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -.04em;
+      line-height: 1;
+      border: 1px solid transparent;
+    }
+    .mag small {
+      display: block;
+      margin-top: 6px;
+      font-size: 10px;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      opacity: .9;
+    }
+    .mag.red { background: rgba(239,68,68,.16); color: #fff; border-color: rgba(239,68,68,.22); }
+    .mag.orange { background: rgba(249,115,22,.15); color: #fff; border-color: rgba(249,115,22,.22); }
+    .mag.gray { background: rgba(148,163,184,.13); color: #fff; border-color: rgba(148,163,184,.12); }
+
+    .quake-main { flex: 1; min-width: 0; }
+    .quake-title {
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.35;
+      color: #f8fafc;
+    }
+    .quake-sub {
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .felt {
+      padding: 6px 9px;
+      border-radius: 999px;
+      background: rgba(249,115,22,.14);
+      color: #fed7aa;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .meta-grid {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    .meta {
+      padding: 10px 11px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.04);
+      font-size: 12px;
+      color: #dbe7f2;
+    }
+    .meta b { color: white; }
+    .quake-foot {
+      margin-top: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .detail-pill {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.04);
+      color: #eef4fa;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 28px 18px;
+      border-radius: 24px;
+      background: rgba(255,255,255,.04);
+      border: 1px dashed var(--line);
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .emergency-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    .em-card {
+      padding: 15px;
+      border-radius: 24px;
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.04));
+      border: 1px solid var(--line);
+      min-height: 118px;
+    }
+    .em-icon {
+      width: 42px; height: 42px; border-radius: 14px; display: flex; align-items: center; justify-content: center; background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.18); font-size: 19px;
+    }
+    .em-card h4 { margin: 12px 0 0; font-size: 15px; }
+    .em-card p { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+
+    .bottom-nav {
+      position: fixed;
+      left: 50%; transform: translateX(-50%);
+      bottom: 10px;
+      width: min(408px, calc(100vw - 16px));
+      border-radius: 28px;
+      padding: 8px;
+      background: rgba(8,15,24,.88);
+      border: 1px solid var(--line);
+      backdrop-filter: blur(18px);
+      display: grid;
+      grid-template-columns: repeat(4,1fr);
+      gap: 8px;
+      box-shadow: var(--shadow);
+      z-index: 50;
+    }
+    .nav-btn {
+      border: 0;
+      height: 58px;
+      border-radius: 22px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+    }
+    .nav-btn.active {
+      background: rgba(239,68,68,.14);
+      color: white;
+    }
+    .nav-icon { font-size: 18px; line-height: 1; }
+
+    .modal {
+      position: fixed; inset: 0; z-index: 120; display: none; align-items: flex-end; justify-content: center; background: rgba(0,0,0,.46); backdrop-filter: blur(8px);
+    }
+    .modal.show { display: flex; }
+    .sheet {
+      width: min(440px, 100vw);
+      border-radius: 28px 28px 0 0;
+      background: linear-gradient(180deg, #0d1829 0%, #08101c 100%);
+      border: 1px solid var(--line);
+      padding: 12px 16px 26px;
+      max-height: 88vh;
+      overflow: auto;
+      box-shadow: var(--shadow);
+      animation: rise .2s ease;
+    }
+    @keyframes rise { from { transform: translateY(18px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .grip { width: 54px; height: 5px; border-radius: 999px; background: rgba(255,255,255,.12); margin: 4px auto 12px; }
+    .sheet-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .sheet h3 { margin: 0; font-size: 20px; letter-spacing: -.03em; }
+    .close {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.05);
+      color: white;
+      width: 38px; height: 38px; border-radius: 14px;
+      cursor: pointer;
+    }
+    .sheet-grid {
+      display: grid;
+      grid-template-columns: repeat(2,1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .sheet-item {
+      border-radius: 18px;
+      padding: 12px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.05);
+    }
+    .sheet-item .k { font-size: 11px; color: var(--muted); }
+    .sheet-item .v { font-size: 15px; font-weight: 700; margin-top: 5px; }
+    .sheet-note {
+      margin-top: 14px;
+      border-radius: 18px;
+      padding: 14px;
+      background: rgba(239,68,68,.08);
+      border: 1px solid rgba(239,68,68,.16);
+      color: #fee2e2;
+      line-height: 1.55;
+      font-size: 13px;
+    }
+
+    .mini-note {
+      margin-top: 14px;
+      border-radius: 18px;
+      padding: 12px 14px;
+      background: rgba(16,185,129,.09);
+      border: 1px solid rgba(16,185,129,.16);
+      color: #d1fae5;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    @media (max-width: 380px) {
+      .hero-grid, .sheet-grid, .emergency-grid { grid-template-columns: 1fr 1fr; }
+      .top h2 { font-size: 24px; }
+      .mag { min-width: 62px; font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="splash" id="splash">
+    <div class="splash-card">
+      <div class="pulse-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 12h4l2.2-4.5L13 17l2.2-5H21"/>
+        </svg>
+      </div>
+      <h1>Deprem Takip</h1>
+      <p>Türkiye için hızlı, sade ve güçlü deprem takip deneyimi.</p>
+      <div class="loader"><span></span></div>
+    </div>
+  </div>
+
+  <div class="app">
+    <header class="top">
+      <div class="eyebrow">Türkiye Deprem Takip</div>
+      <div class="top-row">
+        <div>
+          <h2>Canlı deprem ekranı</h2>
+        </div>
+        <div class="status">
+          <div class="label">Sistem</div>
+          <div class="value">Aktif İzleme</div>
+        </div>
+      </div>
+    </header>
+
+    <main class="page">
+      <section class="card hero">
+        <div class="hero-top">
+          <div>
+            <div class="muted" style="font-size:13px;">Son dikkat çeken kayıt</div>
+            <div class="location" id="heroLocation">Datça Açıkları</div>
+            <div class="sub" id="heroSub">Muğla • Hissedildi bildirimi mevcut</div>
+          </div>
+          <div class="magnitude-big">
+            <strong id="heroMag">5.1</strong>
+            <span>Büyüklük</span>
+          </div>
+        </div>
+        <div class="hero-grid">
+          <div class="hero-item"><div class="k">Derinlik</div><div class="v" id="heroDepth">18.6 km</div></div>
+          <div class="hero-item"><div class="k">Kaynak</div><div class="v" id="heroSource">EMSC</div></div>
+          <div class="hero-item"><div class="k">Saat</div><div class="v" id="heroTime">11:17</div></div>
+        </div>
+        <div class="mini-note">Bu sürüm tek HTML prototiptir. GitHub Pages’a doğrudan koyup açabilirsin. İstersen bir sonraki turda gerçek AFAD/Kandilli veri bağlantısını da ekleriz.</div>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <h3>Hızlı filtreler</h3>
+          <div class="right">Canlı görünüm</div>
+        </div>
+        <div class="chips" id="chips">
+          <button class="chip active" data-filter="all">Tümü</button>
+          <button class="chip" data-filter="4plus">4.0 ve üzeri</button>
+          <button class="chip" data-filter="felt">Hissedilenler</button>
+          <button class="chip" data-filter="near">Yakınımdakiler</button>
+          <button class="chip" data-filter="afad">AFAD</button>
+        </div>
+
+        <div class="search-wrap">
+          <label class="search">
+            <span>🔎</span>
+            <input id="searchInput" type="text" placeholder="Şehir veya bölge ara" />
+          </label>
+          <button class="ghost-btn" id="refreshBtn" title="Listeyi yenile">↻</button>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <h3>Son depremler</h3>
+          <div class="right" id="resultCount">6 kayıt</div>
+        </div>
+        <div class="quake-list" id="quakeList"></div>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <h3>Acil durum</h3>
+          <div class="right">Offline kartlar</div>
+        </div>
+        <div class="emergency-grid">
+          <div class="em-card">
+            <div class="em-icon">✅</div>
+            <h4>Güvendeyim</h4>
+            <p>Tek dokunuşla yakınlara iyi olduğunu bildiren yapı için hazır alan.</p>
+          </div>
+          <div class="em-card">
+            <div class="em-icon">📍</div>
+            <h4>Toplanma Alanı</h4>
+            <p>Yakındaki güvenli noktaları açmak için ayrı ekrana bağlanabilir.</p>
+          </div>
+          <div class="em-card">
+            <div class="em-icon">🩺</div>
+            <h4>Acil Notlar</h4>
+            <p>Kan grubu, ilaçlar, yakın kişi bilgileri gibi kritik veriler tutulabilir.</p>
+          </div>
+          <div class="em-card">
+            <div class="em-icon">☎️</div>
+            <h4>Kritik Hatlar</h4>
+            <p>112, AFAD ve diğer acil erişim aksiyonları için hızlı alan bırakıldı.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <nav class="bottom-nav">
+    <button class="nav-btn active"><span class="nav-icon">🏠</span><span>Ana Sayfa</span></button>
+    <button class="nav-btn"><span class="nav-icon">🗺️</span><span>Harita</span></button>
+    <button class="nav-btn"><span class="nav-icon">🔔</span><span>Bildirim</span></button>
+    <button class="nav-btn"><span class="nav-icon">🆘</span><span>Acil</span></button>
+  </nav>
+
+  <div class="modal" id="detailModal">
+    <div class="sheet">
+      <div class="grip"></div>
+      <div class="sheet-head">
+        <h3 id="modalTitle">Deprem Detayı</h3>
+        <button class="close" id="closeModal">✕</button>
+      </div>
+      <div class="sheet-grid" id="modalGrid"></div>
+      <div class="sheet-note" id="modalNote"></div>
+    </div>
+  </div>
+
+  <script>
+    const quakeData = [
+      {
+        id: 1,
+        location: 'Datça Açıkları',
+        city: 'Muğla',
+        magnitude: 5.1,
+        depth: 18.6,
+        time: '11:17',
+        date: '23 Nisan 2026',
+        distance: 90,
+        source: 'EMSC',
+        felt: true,
+        lat: '36.72',
+        lng: '27.14',
+        summary: 'Orta şiddette hissedilen bu kayıt için deniz açıkları odaklı bir bildirim tasarlandı.'
+      },
+      {
+        id: 2,
+        location: 'Marmara Denizi - Silivri Açıkları',
+        city: 'İstanbul',
+        magnitude: 4.8,
+        depth: 7.2,
+        time: '14:32',
+        date: '23 Nisan 2026',
+        distance: 18,
+        source: 'AFAD',
+        felt: true,
+        lat: '40.83',
+        lng: '28.31',
+        summary: 'İstanbul çevresi için yakınlık filtresinde öne alınan örnek kayıt.'
+      },
+      {
+        id: 3,
+        location: 'Göksun',
+        city: 'Kahramanmaraş',
+        magnitude: 4.2,
+        depth: 5.9,
+        time: '12:41',
+        date: '23 Nisan 2026',
+        distance: 63,
+        source: 'AFAD',
+        felt: true,
+        lat: '38.03',
+        lng: '36.50',
+        summary: 'Sığ derinlik nedeniyle kullanıcıya daha görünür işaretlenmiş kayıt örneği.'
+      },
+      {
+        id: 4,
+        location: 'Ege Denizi - Seferihisar Açıkları',
+        city: 'İzmir',
+        magnitude: 3.9,
+        depth: 11.4,
+        time: '13:58',
+        date: '23 Nisan 2026',
+        distance: 42,
+        source: 'Kandilli',
+        felt: false,
+        lat: '38.02',
+        lng: '26.82',
+        summary: 'Liste içinde orta önemde gösterilen, hissedilmemiş kayıt örneği.'
+      },
+      {
+        id: 5,
+        location: 'Doğanşehir',
+        city: 'Malatya',
+        magnitude: 3.6,
+        depth: 8.1,
+        time: '09:26',
+        date: '23 Nisan 2026',
+        distance: 51,
+        source: 'AFAD',
+        felt: false,
+        lat: '38.08',
+        lng: '37.87',
+        summary: 'Daha küçük büyüklükte kayıtların görünümünü test etmek için eklendi.'
+      },
+      {
+        id: 6,
+        location: 'Yüksekova',
+        city: 'Hakkâri',
+        magnitude: 4.0,
+        depth: 13.2,
+        time: '08:54',
+        date: '23 Nisan 2026',
+        distance: 71,
+        source: 'Kandilli',
+        felt: false,
+        lat: '37.57',
+        lng: '44.29',
+        summary: 'Bölgesel dağılımı çeşitlendirmek için eklenen doğu Türkiye örneği.'
+      }
+    ];
+
+    let currentFilter = 'all';
+    let currentSearch = '';
+
+    const splash = document.getElementById('splash');
+    const chips = document.getElementById('chips');
+    const searchInput = document.getElementById('searchInput');
+    const quakeList = document.getElementById('quakeList');
+    const resultCount = document.getElementById('resultCount');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const detailModal = document.getElementById('detailModal');
+    const closeModal = document.getElementById('closeModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalGrid = document.getElementById('modalGrid');
+    const modalNote = document.getElementById('modalNote');
+
+    function magClass(mag) {
+      if (mag >= 5) return 'red';
+      if (mag >= 4) return 'orange';
+      return 'gray';
+    }
+
+    function renderHero(item) {
+      document.getElementById('heroLocation').textContent = item.location;
+      document.getElementById('heroSub').textContent = `${item.city} • ${item.felt ? 'Hissedildi bildirimi mevcut' : 'Rutin izleme kaydı'}`;
+      document.getElementById('heroMag').textContent = item.magnitude.toFixed(1);
+      document.getElementById('heroDepth').textContent = `${item.depth} km`;
+      document.getElementById('heroSource').textContent = item.source;
+      document.getElementById('heroTime').textContent = item.time;
+    }
+
+    function applyFilter(data) {
+      let out = [...data];
+      if (currentFilter === '4plus') out = out.filter(q => q.magnitude >= 4);
+      if (currentFilter === 'felt') out = out.filter(q => q.felt);
+      if (currentFilter === 'near') out = out.filter(q => q.distance <= 25);
+      if (currentFilter === 'afad') out = out.filter(q => q.source === 'AFAD');
+      if (currentSearch.trim()) {
+        const s = currentSearch.trim().toLowerCase();
+        out = out.filter(q => (`${q.location} ${q.city}`).toLowerCase().includes(s));
+      }
+      return out;
+    }
+
+    function quakeCard(q) {
+      return `
+        <article class="quake-card" data-id="${q.id}">
+          <div class="quake-top">
+            <div class="mag ${magClass(q.magnitude)}">
+              ${q.magnitude.toFixed(1)}
+              <small>ML</small>
+            </div>
+            <div class="quake-main">
+              <div class="quake-title">${q.location}</div>
+              <div class="quake-sub">
+                <span>${q.city}</span>
+                ${q.felt ? '<span class="felt">Hissedildi</span>' : ''}
+              </div>
+              <div class="meta-grid">
+                <div class="meta">Derinlik: <b>${q.depth} km</b></div>
+                <div class="meta">Uzaklık: <b>${q.distance} km</b></div>
+                <div class="meta">Saat: <b>${q.time}</b></div>
+                <div class="meta">Kaynak: <b>${q.source}</b></div>
+              </div>
+              <div class="quake-foot">
+                <span>${q.date}</span>
+                <span class="detail-pill">Detay</span>
+              </div>
+            </div>
+          </div>
+        </article>
+      `;
+    }
+
+    function renderList() {
+      const filtered = applyFilter(quakeData);
+      resultCount.textContent = `${filtered.length} kayıt`;
+      if (!filtered.length) {
+        quakeList.innerHTML = '<div class="empty">Aramana veya seçtiğin filtreye uygun kayıt bulunamadı.</div>';
+        return;
+      }
+      quakeList.innerHTML = filtered.map(quakeCard).join('');
+      [...document.querySelectorAll('.quake-card')].forEach(card => {
+        card.addEventListener('click', () => {
+          const item = quakeData.find(q => q.id === Number(card.dataset.id));
+          openModal(item);
+        });
+      });
+    }
+
+    function openModal(item) {
+      modalTitle.textContent = `${item.location} • ${item.magnitude.toFixed(1)}`;
+      modalGrid.innerHTML = `
+        <div class="sheet-item"><div class="k">Şehir</div><div class="v">${item.city}</div></div>
+        <div class="sheet-item"><div class="k">Tarih</div><div class="v">${item.date}</div></div>
+        <div class="sheet-item"><div class="k">Saat</div><div class="v">${item.time}</div></div>
+        <div class="sheet-item"><div class="k">Derinlik</div><div class="v">${item.depth} km</div></div>
+        <div class="sheet-item"><div class="k">Koordinat</div><div class="v">${item.lat}, ${item.lng}</div></div>
+        <div class="sheet-item"><div class="k">Kaynak</div><div class="v">${item.source}</div></div>
+      `;
+      modalNote.textContent = item.summary;
+      detailModal.classList.add('show');
+    }
+
+    function closeDetail() {
+      detailModal.classList.remove('show');
+    }
+
+    chips.addEventListener('click', (e) => {
+      const chip = e.target.closest('.chip');
+      if (!chip) return;
+      currentFilter = chip.dataset.filter;
+      [...chips.querySelectorAll('.chip')].forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      renderList();
+    });
+
+    searchInput.addEventListener('input', (e) => {
+      currentSearch = e.target.value;
+      renderList();
+    });
+
+    refreshBtn.addEventListener('click', () => {
+      refreshBtn.style.transform = 'rotate(180deg)';
+      setTimeout(() => refreshBtn.style.transform = 'rotate(0deg)', 260);
+      renderHero(quakeData[1]);
+      renderList();
+    });
+
+    closeModal.addEventListener('click', closeDetail);
+    detailModal.addEventListener('click', (e) => {
+      if (e.target === detailModal) closeDetail();
+    });
+
+    renderHero(quakeData[0]);
+    renderList();
+    setTimeout(() => splash.classList.add('hide'), 950);
+  </script>
+</body>
+</html>
