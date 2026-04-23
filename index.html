@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1020" />
+  <title>SEİSMA • Türkiye Deprem Takip</title>
+  <style>
+    :root {
+      --bg: #070b14;
+      --panel: rgba(15, 21, 38, 0.88);
+      --panel-2: rgba(22, 30, 52, 0.92);
+      --line: rgba(151, 170, 208, 0.14);
+      --line-strong: rgba(151, 170, 208, 0.22);
+      --text: #f4f7ff;
+      --muted: #98a7c7;
+      --muted-2: #7484a6;
+      --cyan: #5ee6ff;
+      --cyan-2: #0fd0ff;
+      --amber: #ffb649;
+      --orange: #ff7d42;
+      --red: #ff4d65;
+      --green: #53e49e;
+      --blue: #7aa7ff;
+      --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+      --radius-xl: 28px;
+      --radius-lg: 22px;
+      --radius-md: 18px;
+      --safe-top: env(safe-area-inset-top);
+      --safe-bottom: env(safe-area-inset-bottom);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top right, rgba(15,208,255,.08), transparent 24%),
+        radial-gradient(circle at top left, rgba(255,77,101,.10), transparent 26%),
+        linear-gradient(180deg, #09101e 0%, #050811 100%);
+      color: var(--text);
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    body.flash-mode {
+      animation: flashPulse .7s linear infinite;
+    }
+
+    @keyframes flashPulse {
+      0%, 100% { background: #f8fbff; color: #0b1020; }
+      50% { background: #070b14; color: #f4f7ff; }
+    }
+
+    .app {
+      max-width: 430px;
+      margin: 0 auto;
+      min-height: 100dvh;
+      padding: calc(16px + var(--safe-top)) 16px calc(96px + var(--safe-bottom));
+      position: relative;
+    }
+
+    .splash {
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(circle at center, rgba(15,208,255,.14), transparent 30%),
+        linear-gradient(180deg, #080d19, #03050a);
+      display: grid;
+      place-items: center;
+      z-index: 100;
+      transition: opacity .45s ease, visibility .45s ease;
+    }
+
+    .splash.hidden { opacity: 0; visibility: hidden; }
+
+    .splash-box {
+      text-align: center;
+      display: grid;
+      gap: 16px;
+      place-items: center;
+    }
+
+    .radar {
+      width: 104px;
+      height: 104px;
+      position: relative;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(94,230,255,.16), rgba(94,230,255,.02) 58%, transparent 60%);
+      border: 1px solid rgba(94,230,255,.22);
+      box-shadow: 0 0 0 1px rgba(255,255,255,.03) inset, 0 16px 40px rgba(15,208,255,.14);
+      overflow: hidden;
+    }
+
+    .radar::before,
+    .radar::after {
+      content: "";
+      position: absolute;
+      inset: 50%;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      border: 1px solid rgba(94,230,255,.28);
+      animation: ring 2.4s ease-out infinite;
+    }
+    .radar::after { animation-delay: 1.2s; }
+
+    @keyframes ring {
+      0% { width: 18px; height: 18px; opacity: .95; }
+      100% { width: 104px; height: 104px; opacity: 0; }
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .brand-left { display: flex; gap: 12px; align-items: center; }
+
+    .brand-mark {
+      width: 46px;
+      height: 46px;
+      border-radius: 16px;
+      background: linear-gradient(145deg, rgba(15,208,255,.18), rgba(255,77,101,.18));
+      border: 1px solid rgba(255,255,255,.08);
+      position: relative;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .brand-mark::before,
+    .brand-mark::after {
+      content: "";
+      position: absolute;
+      left: 10px;
+      right: 10px;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    }
+
+    .brand-mark::before { top: 18px; transform: rotate(24deg); }
+    .brand-mark::after { bottom: 16px; transform: rotate(-17deg); }
+
+    .eyebrow {
+      font-size: 11px;
+      letter-spacing: .24em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      opacity: .95;
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    .brand-title {
+      font-size: 20px;
+      font-weight: 800;
+      line-height: 1.05;
+    }
+
+    .brand-sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+    .ghost-btn, .icon-btn, .chip, .filter-btn, .action-btn, .nav-btn, .search, .seg button {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .ghost-btn, .icon-btn, .chip, .filter-btn, .action-btn {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.03);
+      color: var(--text);
+      border-radius: 16px;
+    }
+
+    .ghost-btn, .icon-btn {
+      height: 44px;
+      min-width: 44px;
+      display: grid;
+      place-items: center;
+      box-shadow: 0 8px 24px rgba(0,0,0,.18);
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      border-radius: var(--radius-xl);
+      border: 1px solid var(--line);
+      background:
+        radial-gradient(circle at top right, rgba(15,208,255,.16), transparent 32%),
+        radial-gradient(circle at bottom left, rgba(255,77,101,.18), transparent 32%),
+        linear-gradient(180deg, rgba(17,24,42,.96), rgba(8,12,22,.96));
+      box-shadow: var(--shadow);
+      padding: 18px;
+      min-height: 225px;
+      margin-bottom: 14px;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -30px -30px auto;
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(94,230,255,.10), transparent 68%);
+      filter: blur(8px);
+    }
+
+    .hero-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .status-pill {
+      padding: 9px 12px;
+      border-radius: 999px;
+      background: rgba(83,228,158,.10);
+      color: #bcffd8;
+      border: 1px solid rgba(83,228,158,.24);
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .hero-title {
+      margin-top: 10px;
+      font-size: 24px;
+      font-weight: 800;
+      line-height: 1.05;
+      max-width: 78%;
+    }
+
+    .hero-sub {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+      max-width: 82%;
+    }
+
+    .hero-grid {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 12px;
+      align-items: end;
+    }
+
+    .mag-wrap {
+      display: flex;
+      align-items: end;
+      gap: 10px;
+    }
+
+    .mag-number {
+      font-size: 64px;
+      line-height: .88;
+      font-weight: 900;
+      letter-spacing: -0.05em;
+    }
+
+    .mag-caption {
+      padding-bottom: 8px;
+    }
+
+    .mag-caption .big { font-size: 15px; font-weight: 700; }
+    .mag-caption .small { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    .pulse-panel {
+      justify-self: end;
+      width: 124px;
+      height: 124px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255,255,255,.08);
+      background: radial-gradient(circle, rgba(255,255,255,.04), transparent 60%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .pulse-panel .core {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--red);
+      box-shadow: 0 0 20px rgba(255,77,101,.7);
+      z-index: 2;
+    }
+
+    .pulse-panel .wave,
+    .pulse-panel .wave::before,
+    .pulse-panel .wave::after {
+      position: absolute;
+      inset: 50%;
+      transform: translate(-50%, -50%);
+      content: "";
+      border-radius: 50%;
+      border: 1px solid rgba(94,230,255,.18);
+      width: 32px;
+      height: 32px;
+      animation: wave 2.8s ease-out infinite;
+    }
+
+    .pulse-panel .wave::before { animation-delay: .7s; }
+    .pulse-panel .wave::after { animation-delay: 1.4s; }
+
+    @keyframes wave {
+      0% { width: 18px; height: 18px; opacity: .85; }
+      100% { width: 132px; height: 132px; opacity: 0; }
+    }
+
+    .quick-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .stat {
+      padding: 14px 12px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .stat .label { color: var(--muted); font-size: 12px; }
+    .stat .value { margin-top: 7px; font-size: 20px; font-weight: 800; }
+
+    .search-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .search {
+      height: 48px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.04);
+      color: var(--text);
+      padding: 0 16px;
+      outline: none;
+      font-size: 15px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+    }
+
+    .search::placeholder { color: var(--muted-2); }
+
+    .chips, .filters {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      scrollbar-width: none;
+    }
+
+    .chips::-webkit-scrollbar,
+    .filters::-webkit-scrollbar { display: none; }
+
+    .chip, .filter-btn {
+      white-space: nowrap;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .chip.active, .filter-btn.active {
+      background: linear-gradient(135deg, rgba(15,208,255,.20), rgba(122,167,255,.14));
+      border-color: rgba(94,230,255,.32);
+      color: #effcff;
+    }
+
+    .section {
+      margin-top: 18px;
+      display: none;
+    }
+    .section.active { display: block; }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 10px 2px 12px;
+    }
+
+    .section-title { font-size: 17px; font-weight: 800; }
+    .section-meta { font-size: 12px; color: var(--muted); }
+
+    .map-card, .card {
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .map-card { padding: 14px; overflow: hidden; }
+    .map-stage {
+      position: relative;
+      height: 250px;
+      border-radius: 20px;
+      background:
+        linear-gradient(180deg, rgba(9,14,25,.9), rgba(9,14,25,.78)),
+        radial-gradient(circle at 50% 40%, rgba(94,230,255,.06), transparent 34%);
+      border: 1px solid rgba(255,255,255,.05);
+      overflow: hidden;
+    }
+
+    .gridline {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+      background-size: 32px 32px;
+      mask-image: linear-gradient(180deg, rgba(255,255,255,.85), transparent 100%);
+    }
+
+    .turkey-outline {
+      position: absolute;
+      left: 8%;
+      right: 8%;
+      top: 26%;
+      height: 46%;
+      border-radius: 38% 40% 42% 30% / 46% 40% 40% 38%;
+      border: 1px dashed rgba(122,167,255,.20);
+      background: linear-gradient(180deg, rgba(122,167,255,.05), rgba(255,77,101,.03));
+      filter: drop-shadow(0 0 20px rgba(94,230,255,.04));
+      transform: rotate(-2deg);
+    }
+
+    .map-dots { position: absolute; inset: 0; }
+
+    .quake-dot {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      margin-left: -5px;
+      margin-top: -5px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 0 6px rgba(94,230,255,.10), 0 0 18px rgba(94,230,255,.25);
+    }
+
+    .quake-dot.hot { background: var(--red); box-shadow: 0 0 0 8px rgba(255,77,101,.12), 0 0 24px rgba(255,77,101,.28); }
+    .quake-dot.warm { background: var(--orange); box-shadow: 0 0 0 8px rgba(255,125,66,.12), 0 0 24px rgba(255,125,66,.24); }
+    .quake-dot.cool { background: var(--green); box-shadow: 0 0 0 8px rgba(83,228,158,.10), 0 0 24px rgba(83,228,158,.20); }
+
+    .map-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--line);
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .legend-point {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex: 0 0 auto;
+    }
+
+    .feed {
+      display: grid;
+      gap: 10px;
+    }
+
+    .feed-item {
+      display: grid;
+      grid-template-columns: 78px 1fr;
+      gap: 12px;
+      padding: 13px;
+      cursor: pointer;
+      transition: transform .18s ease, border-color .18s ease, background .18s ease;
+    }
+
+    .feed-item:hover { transform: translateY(-1px); border-color: var(--line-strong); }
+
+    .mag-tile {
+      min-height: 82px;
+      border-radius: 22px;
+      display: grid;
+      place-items: center;
+      font-size: 30px;
+      font-weight: 900;
+      letter-spacing: -.04em;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.08);
+    }
+
+    .mag-tile::after {
+      content: "";
+      position: absolute;
+      inset: auto -16px -24px auto;
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.08);
+      filter: blur(8px);
+    }
+
+    .mag-green { background: linear-gradient(160deg, rgba(48,157,109,.92), rgba(26,82,64,.96)); }
+    .mag-blue { background: linear-gradient(160deg, rgba(56,93,168,.94), rgba(29,44,89,.96)); }
+    .mag-orange { background: linear-gradient(160deg, rgba(200,110,43,.94), rgba(109,53,23,.96)); }
+    .mag-red { background: linear-gradient(160deg, rgba(186,52,83,.96), rgba(96,21,39,.98)); }
+
+    .item-top {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .place { font-size: 15px; font-weight: 800; line-height: 1.32; }
+    .region { margin-top: 4px; font-size: 13px; color: var(--muted); }
+
+    .mini-tag {
+      padding: 6px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
+      border: 1px solid var(--line);
+      white-space: nowrap;
+    }
+
+    .item-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .micro {
+      padding: 9px 10px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.035);
+      border: 1px solid rgba(255,255,255,.03);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .micro strong { display: block; color: var(--text); font-size: 13px; margin-top: 4px; }
+
+    .empty {
+      padding: 24px 16px;
+      text-align: center;
+      color: var(--muted);
+      border-radius: var(--radius-lg);
+      border: 1px dashed var(--line-strong);
+      background: rgba(255,255,255,.02);
+    }
+
+    .ready-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .ready-card {
+      padding: 16px;
+      min-height: 126px;
+    }
+
+    .ready-card .kicker { font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--cyan); }
+    .ready-card h3 { margin-top: 10px; font-size: 16px; font-weight: 800; }
+    .ready-card p { margin-top: 8px; color: var(--muted); font-size: 13px; line-height: 1.45; }
+
+    .action-row {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .action-btn {
+      padding: 14px 12px;
+      border-radius: 18px;
+      font-weight: 800;
+      font-size: 14px;
+      cursor: pointer;
+      min-height: 52px;
+    }
+
+    .action-btn.primary {
+      background: linear-gradient(135deg, rgba(255,77,101,.22), rgba(255,125,66,.16));
+      border-color: rgba(255,77,101,.28);
+      color: #fff5f7;
+    }
+
+    .action-btn.secondary {
+      background: linear-gradient(135deg, rgba(15,208,255,.18), rgba(122,167,255,.14));
+      border-color: rgba(94,230,255,.30);
+      color: #eefcff;
+    }
+
+    .timeline {
+      margin-top: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .timeline-item {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 12px;
+    }
+
+    .time-badge {
+      border-radius: 14px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--line);
+      padding: 10px 8px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .time-badge strong { display: block; color: var(--text); font-size: 15px; margin-bottom: 3px; }
+
+    .bottom-nav {
+      position: fixed;
+      left: 50%;
+      bottom: 0;
+      transform: translateX(-50%);
+      width: min(430px, 100%);
+      padding: 12px 16px calc(12px + var(--safe-bottom));
+      backdrop-filter: blur(18px);
+      background: linear-gradient(180deg, rgba(7,11,20,0), rgba(7,11,20,.88) 26%, rgba(7,11,20,.98));
+      z-index: 35;
+    }
+
+    .nav-shell {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      padding: 8px;
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,.06);
+      background: rgba(13,18,31,.86);
+      box-shadow: var(--shadow);
+    }
+
+    .nav-btn {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      border-radius: 18px;
+      padding: 10px 8px 11px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: grid;
+      gap: 6px;
+      place-items: center;
+    }
+
+    .nav-btn.active {
+      background: linear-gradient(135deg, rgba(15,208,255,.18), rgba(122,167,255,.12));
+      color: var(--text);
+      border: 1px solid rgba(94,230,255,.22);
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(2,5,10,.68);
+      display: flex;
+      align-items: end;
+      justify-content: center;
+      padding: 18px;
+      opacity: 0;
+      visibility: hidden;
+      transition: .22s ease;
+      z-index: 90;
+    }
+
+    .modal.show { opacity: 1; visibility: visible; }
+
+    .sheet {
+      width: min(430px, 100%);
+      max-height: 86dvh;
+      overflow: auto;
+      border-radius: 28px;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(16,22,39,.98), rgba(8,12,22,.98));
+      box-shadow: 0 24px 80px rgba(0,0,0,.45);
+      padding: 18px;
+      transform: translateY(18px);
+      transition: transform .22s ease;
+    }
+
+    .modal.show .sheet { transform: translateY(0); }
+
+    .sheet-handle {
+      width: 42px;
+      height: 5px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.12);
+      margin: 0 auto 14px;
+    }
+
+    .sheet-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .sheet-box {
+      border-radius: 18px;
+      padding: 12px;
+      background: rgba(255,255,255,.035);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .sheet-box strong { display: block; color: var(--text); font-size: 14px; margin-top: 5px; }
+
+    .footer-note {
+      margin-top: 16px;
+      color: var(--muted-2);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    @media (max-width: 360px) {
+      .hero-title { max-width: 100%; font-size: 22px; }
+      .hero-sub { max-width: 100%; }
+      .hero-grid { grid-template-columns: 1fr; }
+      .pulse-panel { justify-self: start; }
+      .quick-stats { grid-template-columns: 1fr; }
+      .ready-grid, .action-row, .sheet-grid { grid-template-columns: 1fr; }
+      .feed-item { grid-template-columns: 70px 1fr; }
+      .mag-number { font-size: 54px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="splash" id="splash">
+    <div class="splash-box">
+      <div class="radar"></div>
+      <div>
+        <div class="eyebrow">SEİSMA</div>
+        <h1 class="brand-title" style="font-size:30px; margin-top:8px;">Türkiye Deprem Akışı</h1>
+        <p class="brand-sub" style="font-size:14px; margin-top:10px;">Canlı veri deneniyor • Güçlü arayüz • Hazır acil mod</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="app">
+    <header class="brand">
+      <div class="brand-left">
+        <div class="brand-mark"></div>
+        <div>
+          <div class="eyebrow">SEİSMA</div>
+          <div class="brand-title">Deprem Takip</div>
+          <div class="brand-sub" id="brandStatus">Türkiye odaklı canlı akış</div>
+        </div>
+      </div>
+      <button class="icon-btn" id="refreshBtn" aria-label="Yenile">↻</button>
+    </header>
+
+    <section class="hero">
+      <div class="hero-top">
+        <div>
+          <div class="eyebrow">Kritik Olay Paneli</div>
+          <div class="hero-title" id="heroTitle">Veri yükleniyor</div>
+        </div>
+        <div class="status-pill" id="heroStatus">Akış hazırlanıyor</div>
+      </div>
+
+      <p class="hero-sub" id="heroSub">Türkiye çevresindeki son depremler toplanıyor. Bağlantı başarısız olursa uygulama örnek veri ile devam eder.</p>
+
+      <div class="hero-grid">
+        <div class="mag-wrap">
+          <div class="mag-number" id="heroMag">--</div>
+          <div class="mag-caption">
+            <div class="big" id="heroRegion">Bölge bekleniyor</div>
+            <div class="small" id="heroMeta">Derinlik • Kaynak • Saat</div>
+          </div>
+        </div>
+        <div class="pulse-panel" aria-hidden="true">
+          <div class="wave"></div>
+          <div class="core"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="quick-stats">
+      <div class="stat">
+        <div class="label">Son 24 saat</div>
+        <div class="value" id="count24h">0</div>
+      </div>
+      <div class="stat">
+        <div class="label">4.0 ve üzeri</div>
+        <div class="value" id="count40">0</div>
+      </div>
+      <div class="stat">
+        <div class="label">Son güncelleme</div>
+        <div class="value" id="updatedAt" style="font-size:16px;">Hazır değil</div>
+      </div>
+    </section>
+
+    <div class="search-row">
+      <input class="search" id="searchInput" type="search" placeholder="Şehir, bölge ya da kaynak ara" />
+      <button class="ghost-btn" id="sortBtn" aria-label="Sırala">⇅</button>
+    </div>
+
+    <div class="chips" id="sourceChips">
+      <button class="chip active" data-source="all">Tüm kaynaklar</button>
+      <button class="chip" data-source="USGS">USGS</button>
+      <button class="chip" data-source="Demo">Yedek veri</button>
+    </div>
+
+    <div class="filters" style="margin-top:10px;">
+      <button class="filter-btn active" data-filter="all">Tümü</button>
+      <button class="filter-btn" data-filter="0">0–2.9</button>
+      <button class="filter-btn" data-filter="3">3.0–3.9</button>
+      <button class="filter-btn" data-filter="4">4.0–4.9</button>
+      <button class="filter-btn" data-filter="5">5.0+</button>
+    </div>
+
+    <section class="section active" id="feedSection">
+      <div class="section-head">
+        <div>
+          <div class="section-title">Son depremler</div>
+          <div class="section-meta" id="feedMeta">Canlı akış bekleniyor</div>
+        </div>
+        <button class="ghost-btn" id="shareBtn" aria-label="Paylaş">⤴</button>
+      </div>
+      <div class="feed" id="feed"></div>
+    </section>
+
+    <section class="section" id="mapSection">
+      <div class="section-head">
+        <div>
+          <div class="section-title">Türkiye odak haritası</div>
+          <div class="section-meta">Basitleştirilmiş yoğunluk görünümü</div>
+        </div>
+      </div>
+      <div class="map-card">
+        <div class="map-stage" id="mapStage">
+          <div class="gridline"></div>
+          <div class="turkey-outline"></div>
+          <div class="map-dots" id="mapDots"></div>
+        </div>
+        <div class="map-legend">
+          <div class="legend-item"><span class="legend-point" style="background:var(--green)"></span>0–2.9 küçük</div>
+          <div class="legend-item"><span class="legend-point" style="background:var(--orange)"></span>3.0–4.9 orta</div>
+          <div class="legend-item"><span class="legend-point" style="background:var(--red)"></span>5.0+ kritik</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="readySection">
+      <div class="section-head">
+        <div>
+          <div class="section-title">Hazırlık ve acil mod</div>
+          <div class="section-meta">İnternet zayıfken bile hızlı erişim</div>
+        </div>
+      </div>
+
+      <div class="ready-grid">
+        <div class="card ready-card">
+          <div class="kicker">Acil</div>
+          <h3>Güvendeyim</h3>
+          <p>Konum ve kısa durum mesajını tek paylaşım ekranında hazırla.</p>
+        </div>
+        <div class="card ready-card">
+          <div class="kicker">Toplanma</div>
+          <h3>Yakın plan</h3>
+          <p>Telefonunda önemli kişileri ve acil notlarını görünür tut.</p>
+        </div>
+        <div class="card ready-card">
+          <div class="kicker">Işık</div>
+          <h3>Flaş modu</h3>
+          <p>Ekranı beyaz-siyah yanıp söndürerek görünürlük sağlar.</p>
+        </div>
+        <div class="card ready-card">
+          <div class="kicker">Ses</div>
+          <h3>Düdük sesi</h3>
+          <p>Kısa aralıklarla yüksek frekans bip üretir.</p>
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button class="action-btn primary" id="safeBtn">Güvendeyim paylaş</button>
+        <button class="action-btn secondary" id="flashBtn">Flaş modu</button>
+      </div>
+
+      <div class="timeline">
+        <div class="card timeline-item">
+          <div class="time-badge"><strong>0–10</strong>sn</div>
+          <div>
+            <div class="place">Sarsıntı sonrası ilk kontrol</div>
+            <div class="region">Kendini, yanındakileri ve çıkış alanını hızlı kontrol et.</div>
+          </div>
+        </div>
+        <div class="card timeline-item">
+          <div class="time-badge"><strong>10–60</strong>sn</div>
+          <div>
+            <div class="place">Gaz, elektrik ve riskli noktalar</div>
+            <div class="region">Güvenliyse ikincil tehlikeleri kontrol et ve gerekli alanlara ilerle.</div>
+          </div>
+        </div>
+        <div class="card timeline-item">
+          <div class="time-badge"><strong>1+</strong>dk</div>
+          <div>
+            <div class="place">Bilgi teyidi</div>
+            <div class="region">Resmi kaynaklarla büyüklük, yer ve artçı durumunu doğrula.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="bottom-nav">
+    <div class="nav-shell">
+      <button class="nav-btn active" data-section="feedSection"><span>◉</span><span>Akış</span></button>
+      <button class="nav-btn" data-section="mapSection"><span>◎</span><span>Harita</span></button>
+      <button class="nav-btn" data-section="readySection"><span>✦</span><span>Hazır</span></button>
+    </div>
+  </div>
+
+  <div class="modal" id="detailModal">
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="hero-top" style="align-items:center;">
+        <div>
+          <div class="eyebrow">Deprem Detayı</div>
+          <div class="brand-title" id="detailTitle" style="margin-top:8px;">—</div>
+        </div>
+        <button class="ghost-btn" id="closeModal">✕</button>
+      </div>
+      <p class="brand-sub" id="detailSub" style="margin-top:10px;">—</p>
+      <div class="sheet-grid" id="detailGrid"></div>
+      <div class="footer-note">Bu uygulama görsel olarak hızlı yorumlama için tasarlanmıştır. Büyük olaylarda resmi bildirim ve sahadaki güvenlik yönlendirmesi her zaman önceliklidir.</div>
+    </div>
+  </div>
+
+  <script>
+    const TURKEY_BOUNDS = { minLat: 35, maxLat: 43, minLon: 25, maxLon: 45 };
+    const state = {
+      quakes: [],
+      filter: 'all',
+      source: 'all',
+      search: '',
+      sort: 'time',
+      flashOn: false,
+      audioCtx: null,
+      oscillator: null,
+      gainNode: null,
+    };
+
+    const fallbackData = [
+      { id: 'demo-1', mag: 4.8, place: 'Marmara Denizi • Silivri Açıkları', region: 'İstanbul çevresi', depth: 7.2, time: Date.now() - 1000 * 60 * 18, source: 'Demo', lat: 40.78, lon: 28.12 },
+      { id: 'demo-2', mag: 3.7, place: 'Seferihisar Açıkları', region: 'İzmir', depth: 11.4, time: Date.now() - 1000 * 60 * 42, source: 'Demo', lat: 38.12, lon: 26.78 },
+      { id: 'demo-3', mag: 5.1, place: 'Datça Açıkları', region: 'Muğla', depth: 18.6, time: Date.now() - 1000 * 60 * 65, source: 'Demo', lat: 36.58, lon: 27.19 },
+      { id: 'demo-4', mag: 2.6, place: 'Doğanşehir', region: 'Malatya', depth: 8.0, time: Date.now() - 1000 * 60 * 93, source: 'Demo', lat: 38.09, lon: 37.87 },
+      { id: 'demo-5', mag: 4.1, place: 'Göksun', region: 'Kahramanmaraş', depth: 5.4, time: Date.now() - 1000 * 60 * 121, source: 'Demo', lat: 38.02, lon: 36.49 },
+      { id: 'demo-6', mag: 3.3, place: 'Van Gölü Havzası', region: 'Van', depth: 10.9, time: Date.now() - 1000 * 60 * 146, source: 'Demo', lat: 38.62, lon: 43.14 },
+      { id: 'demo-7', mag: 2.1, place: 'Biga Yarımadası', region: 'Çanakkale', depth: 9.4, time: Date.now() - 1000 * 60 * 188, source: 'Demo', lat: 40.26, lon: 26.67 },
+    ];
+
+    const splash = document.getElementById('splash');
+    const feedEl = document.getElementById('feed');
+    const mapDots = document.getElementById('mapDots');
+    const heroTitle = document.getElementById('heroTitle');
+    const heroSub = document.getElementById('heroSub');
+    const heroMag = document.getElementById('heroMag');
+    const heroRegion = document.getElementById('heroRegion');
+    const heroMeta = document.getElementById('heroMeta');
+    const heroStatus = document.getElementById('heroStatus');
+    const updatedAt = document.getElementById('updatedAt');
+    const count24h = document.getElementById('count24h');
+    const count40 = document.getElementById('count40');
+    const feedMeta = document.getElementById('feedMeta');
+    const brandStatus = document.getElementById('brandStatus');
+    const detailModal = document.getElementById('detailModal');
+    const detailTitle = document.getElementById('detailTitle');
+    const detailSub = document.getElementById('detailSub');
+    const detailGrid = document.getElementById('detailGrid');
+    const searchInput = document.getElementById('searchInput');
+
+    function magnitudeClass(mag) {
+      if (mag >= 5) return 'mag-red';
+      if (mag >= 4) return 'mag-orange';
+      if (mag >= 3) return 'mag-blue';
+      return 'mag-green';
+    }
+
+    function dotClass(mag) {
+      if (mag >= 5) return 'quake-dot hot';
+      if (mag >= 3) return 'quake-dot warm';
+      return 'quake-dot cool';
+    }
+
+    function formatRelative(ts) {
+      const diffMin = Math.max(0, Math.round((Date.now() - ts) / 60000));
+      if (diffMin < 1) return 'az önce';
+      if (diffMin < 60) return diffMin + ' dk önce';
+      const hours = Math.floor(diffMin / 60);
+      const mins = diffMin % 60;
+      return hours + ' sa ' + (mins ? mins + ' dk' : '') + ' önce';
+    }
+
+    function formatClock(ts) {
+      return new Intl.DateTimeFormat('tr-TR', { hour: '2-digit', minute: '2-digit' }).format(ts);
+    }
+
+    function formatDate(ts) {
+      return new Intl.DateTimeFormat('tr-TR', { day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' }).format(ts);
+    }
+
+    function cleanPlace(raw) {
+      if (!raw) return 'Konum bilgisi yok';
+      return raw.replace(/\bof\b/i, '•').replace(/\s+/g, ' ').trim();
+    }
+
+    function deriveRegion(place) {
+      const parts = place.split('•').map(s => s.trim()).filter(Boolean);
+      return parts.length > 1 ? parts[parts.length - 1] : place;
+    }
+
+    function getFilteredQuakes() {
+      let items = [...state.quakes];
+
+      if (state.source !== 'all') {
+        items = items.filter(q => q.source === state.source);
+      }
+
+      if (state.filter !== 'all') {
+        items = items.filter(q => {
+          if (state.filter === '0') return q.mag < 3;
+          if (state.filter === '3') return q.mag >= 3 && q.mag < 4;
+          if (state.filter === '4') return q.mag >= 4 && q.mag < 5;
+          if (state.filter === '5') return q.mag >= 5;
+          return true;
+        });
+      }
+
+      if (state.search.trim()) {
+        const term = state.search.toLowerCase('tr');
+        items = items.filter(q => `${q.place} ${q.region} ${q.source}`.toLowerCase('tr').includes(term));
+      }
+
+      items.sort((a, b) => state.sort === 'mag' ? b.mag - a.mag : b.time - a.time);
+      return items;
+    }
+
+    function renderHero(items) {
+      const top = items[0] || state.quakes[0];
+      if (!top) return;
+
+      heroTitle.textContent = top.mag >= 5 ? 'Kritik deprem kaydı öne çıktı' : 'Son güçlü deprem görünümü';
+      heroMag.textContent = top.mag.toFixed(1);
+      heroRegion.textContent = top.place;
+      heroMeta.textContent = `${top.depth.toFixed(1)} km derinlik • ${top.source} • ${formatClock(top.time)}`;
+      heroSub.textContent = `${top.region} çevresinde kaydedilen bu olay, hızlı görünüm için üstte sabitlendi. Listeyi büyüklük ya da zamana göre yeniden sıralayabilirsin.`;
+      heroStatus.textContent = top.mag >= 5 ? 'Yüksek dikkat' : top.mag >= 4 ? 'Takipte kal' : 'Rutin akış';
+    }
+
+    function renderStats() {
+      const now = Date.now();
+      const dayCount = state.quakes.filter(q => now - q.time <= 24 * 60 * 60 * 1000).length;
+      const bigCount = state.quakes.filter(q => q.mag >= 4).length;
+      count24h.textContent = String(dayCount);
+      count40.textContent = String(bigCount);
+      updatedAt.textContent = new Intl.DateTimeFormat('tr-TR', { hour: '2-digit', minute: '2-digit' }).format(now);
+      feedMeta.textContent = `${state.quakes.length} kayıt • ${state.sort === 'time' ? 'zamana göre' : 'büyüklüğe göre'} sıralı`;
+    }
+
+    function renderFeed() {
+      const items = getFilteredQuakes();
+      renderHero(items);
+      feedEl.innerHTML = '';
+
+      if (!items.length) {
+        feedEl.innerHTML = `<div class="empty">Bu filtreyle eşleşen kayıt yok. Filtreyi genişlet ya da aramayı temizle.</div>`;
+        return;
+      }
+
+      items.forEach(item => {
+        const tag = item.mag >= 5 ? 'Kritik' : item.mag >= 4 ? 'Öne çıkan' : 'Rutin';
+        const row = document.createElement('article');
+        row.className = 'card feed-item';
+        row.innerHTML = `
+          <div class="mag-tile ${magnitudeClass(item.mag)}">${item.mag.toFixed(1)}</div>
+          <div>
+            <div class="item-top">
+              <div>
+                <div class="place">${item.place}</div>
+                <div class="region">${item.region}</div>
+              </div>
+              <div class="mini-tag">${tag}</div>
+            </div>
+            <div class="item-grid">
+              <div class="micro">Saat<strong>${formatClock(item.time)}</strong></div>
+              <div class="micro">Derinlik<strong>${item.depth.toFixed(1)} km</strong></div>
+              <div class="micro">Kaynak<strong>${item.source}</strong></div>
+              <div class="micro">Zaman<strong>${formatRelative(item.time)}</strong></div>
+            </div>
+          </div>
+        `;
+        row.addEventListener('click', () => openDetail(item));
+        feedEl.appendChild(row);
+      });
+    }
+
+    function renderMap() {
+      mapDots.innerHTML = '';
+      const items = getFilteredQuakes().slice(0, 26);
+      items.forEach(item => {
+        if (typeof item.lat !== 'number' || typeof item.lon !== 'number') return;
+        const x = ((item.lon - TURKEY_BOUNDS.minLon) / (TURKEY_BOUNDS.maxLon - TURKEY_BOUNDS.minLon)) * 100;
+        const y = (1 - ((item.lat - TURKEY_BOUNDS.minLat) / (TURKEY_BOUNDS.maxLat - TURKEY_BOUNDS.minLat))) * 100;
+        if (x < 0 || x > 100 || y < 0 || y > 100) return;
+        const dot = document.createElement('div');
+        dot.className = dotClass(item.mag);
+        dot.style.left = x + '%';
+        dot.style.top = y + '%';
+        dot.title = `${item.mag.toFixed(1)} • ${item.place}`;
+        mapDots.appendChild(dot);
+      });
+    }
+
+    function openDetail(item) {
+      detailTitle.textContent = `${item.mag.toFixed(1)} • ${item.place}`;
+      detailSub.textContent = `${formatDate(item.time)} tarihinde kaydedildi`;
+      detailGrid.innerHTML = `
+        <div class="sheet-box">Bölge<strong>${item.region}</strong></div>
+        <div class="sheet-box">Kaynak<strong>${item.source}</strong></div>
+        <div class="sheet-box">Derinlik<strong>${item.depth.toFixed(1)} km</strong></div>
+        <div class="sheet-box">Saat<strong>${formatClock(item.time)}</strong></div>
+        <div class="sheet-box">Koordinat<strong>${item.lat?.toFixed?.(2) ?? '—'}, ${item.lon?.toFixed?.(2) ?? '—'}</strong></div>
+        <div class="sheet-box">Durum<strong>${item.mag >= 5 ? 'Kritik izleme' : item.mag >= 4 ? 'Öncelikli izleme' : 'Rutin kayıt'}</strong></div>
+      `;
+      detailModal.classList.add('show');
+    }
+
+    function closeDetail() {
+      detailModal.classList.remove('show');
+    }
+
+    function updateAll() {
+      renderStats();
+      renderFeed();
+      renderMap();
+    }
+
+    async function fetchUSGS() {
+      const end = new Date();
+      const start = new Date(Date.now() - 48 * 60 * 60 * 1000);
+      const url = new URL('https://earthquake.usgs.gov/fdsnws/event/1/query');
+      url.searchParams.set('format', 'geojson');
+      url.searchParams.set('starttime', start.toISOString());
+      url.searchParams.set('endtime', end.toISOString());
+      url.searchParams.set('minlatitude', TURKEY_BOUNDS.minLat);
+      url.searchParams.set('maxlatitude', TURKEY_BOUNDS.maxLat);
+      url.searchParams.set('minlongitude', TURKEY_BOUNDS.minLon);
+      url.searchParams.set('maxlongitude', TURKEY_BOUNDS.maxLon);
+      url.searchParams.set('orderby', 'time');
+      url.searchParams.set('limit', '200');
+
+      const res = await fetch(url.toString(), { cache: 'no-store' });
+      if (!res.ok) throw new Error('USGS veri alınamadı');
+      const data = await res.json();
+      const features = Array.isArray(data.features) ? data.features : [];
+      return features.map(f => ({
+        id: f.id,
+        mag: typeof f.properties?.mag === 'number' ? f.properties.mag : 0,
+        place: cleanPlace(f.properties?.place || 'Konum yok'),
+        region: deriveRegion(cleanPlace(f.properties?.place || 'Konum yok')),
+        depth: typeof f.geometry?.coordinates?.[2] === 'number' ? f.geometry.coordinates[2] : 0,
+        time: typeof f.properties?.time === 'number' ? f.properties.time : Date.now(),
+        source: 'USGS',
+        lon: typeof f.geometry?.coordinates?.[0] === 'number' ? f.geometry.coordinates[0] : null,
+        lat: typeof f.geometry?.coordinates?.[1] === 'number' ? f.geometry.coordinates[1] : null,
+      })).filter(x => x.mag >= 0);
+    }
+
+    async function loadData(force = false) {
+      if (force) heroStatus.textContent = 'Yenileniyor';
+      brandStatus.textContent = 'Canlı veri deneniyor';
+
+      try {
+        const live = await fetchUSGS();
+        if (!live.length) throw new Error('Boş veri');
+        state.quakes = live;
+        heroStatus.textContent = 'Canlı akış';
+        brandStatus.textContent = 'USGS canlı veri aktif';
+        document.querySelector('[data-source="USGS"]').disabled = false;
+      } catch (err) {
+        state.quakes = fallbackData;
+        heroStatus.textContent = 'Yedek veri';
+        brandStatus.textContent = 'Bağlantı zayıf • Yedek veri gösteriliyor';
+      }
+
+      updateAll();
+      setTimeout(() => splash.classList.add('hidden'), 550);
+    }
+
+    function initEvents() {
+      document.getElementById('refreshBtn').addEventListener('click', () => loadData(true));
+      document.getElementById('closeModal').addEventListener('click', closeDetail);
+      detailModal.addEventListener('click', (e) => { if (e.target === detailModal) closeDetail(); });
+      searchInput.addEventListener('input', (e) => { state.search = e.target.value; updateAll(); });
+
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          state.filter = btn.dataset.filter;
+          updateAll();
+        });
+      });
+
+      document.querySelectorAll('.chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.chip').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          state.source = btn.dataset.source;
+          updateAll();
+        });
+      });
+
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+          document.getElementById(btn.dataset.section).classList.add('active');
+        });
+      });
+
+      document.getElementById('sortBtn').addEventListener('click', () => {
+        state.sort = state.sort === 'time' ? 'mag' : 'time';
+        updateAll();
+      });
+
+      document.getElementById('shareBtn').addEventListener('click', async () => {
+        const top = getFilteredQuakes()[0] || state.quakes[0];
+        const text = top
+          ? `SEİSMA: ${top.mag.toFixed(1)} • ${top.place} • ${formatClock(top.time)} • ${top.depth.toFixed(1)} km`
+          : 'SEİSMA deprem akışına göz at';
+        if (navigator.share) {
+          try { await navigator.share({ title: 'SEİSMA', text }); } catch {}
+        } else {
+          await navigator.clipboard?.writeText(text).catch(() => {});
+          alert('Özet metin panoya kopyalandı.');
+        }
+      });
+
+      document.getElementById('safeBtn').addEventListener('click', async () => {
+        const message = 'Güvendeyim. Durumumu kontrol ettim. Uygunsa beni bu mesaj üzerinden teyit et.';
+        if (navigator.share) {
+          try { await navigator.share({ title: 'Durum Bildirimi', text: message }); return; } catch {}
+        }
+        window.location.href = 'sms:?&body=' + encodeURIComponent(message);
+      });
+
+      document.getElementById('flashBtn').addEventListener('click', () => {
+        state.flashOn = !state.flashOn;
+        document.body.classList.toggle('flash-mode', state.flashOn);
+      });
+
+      let beepTimer = null;
+      document.querySelectorAll('.ready-card')[3].addEventListener('click', async () => {
+        try {
+          if (!state.audioCtx) state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          if (!state.oscillator) {
+            state.oscillator = state.audioCtx.createOscillator();
+            state.gainNode = state.audioCtx.createGain();
+            state.oscillator.type = 'square';
+            state.oscillator.frequency.value = 1900;
+            state.gainNode.gain.value = 0;
+            state.oscillator.connect(state.gainNode).connect(state.audioCtx.destination);
+            state.oscillator.start();
+          }
+          if (beepTimer) {
+            clearInterval(beepTimer);
+            beepTimer = null;
+            state.gainNode.gain.setValueAtTime(0, state.audioCtx.currentTime);
+            alert('Düdük sesi kapatıldı.');
+            return;
+          }
+          beepTimer = setInterval(() => {
+            const now = state.audioCtx.currentTime;
+            state.gainNode.gain.cancelScheduledValues(now);
+            state.gainNode.gain.setValueAtTime(0.0001, now);
+            state.gainNode.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
+            state.gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+          }, 520);
+          alert('Düdük sesi aktif. Aynı karta tekrar dokunarak kapatabilirsin.');
+        } catch {
+          alert('Bu cihaz/tarayıcı kısa ses üretimine izin vermedi.');
+        }
+      });
+    }
+
+    initEvents();
+    loadData();
+    setInterval(() => loadData(false), 120000);
+  </script>
+</body>
+</html>
